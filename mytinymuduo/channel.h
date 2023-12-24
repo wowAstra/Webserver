@@ -7,6 +7,12 @@
 #include "callback.h"
 
 namespace my_muduo {
+
+enum ChannelState {
+    kNew,
+    kAdded,
+    kDeleted
+};
     
 class Channel {
 public:
@@ -33,6 +39,15 @@ public:
         Update();
     }
 
+    void DisableWriting() {
+        events_ &= ~EPOLLOUT;
+        Update();
+    }
+
+    void RemoveFd() {
+
+    }
+
     void Update() {
         loop_->Update(this);
     }
@@ -41,9 +56,17 @@ public:
         recv_events_ = events;
     }
 
+    void SetChannelState(ChannelState state) {
+        state_ = state;
+    }
+
     int fd() {return fd_;}
     int events() {return events_;}
     int recv_events() {return recv_events_;}
+    ChannelState state() {return state_;}
+
+    bool IsWriting() {return events_ & EPOLLOUT;}
+    bool IsReading() {return events_ & EPOLLIN;}
 
 private:
     EventLoop* loop_;
@@ -51,6 +74,7 @@ private:
     int events_;
     int recv_events_;
 
+    ChannelState state_;
     ReadCallback read_callback_;
     WriteCallback write_callback_;
 };

@@ -1,9 +1,14 @@
 #ifndef MY_MUDUO_EVENTLOOP_H_
 #define MY_MUDUO_EVENTLOOP_H_
 
+#include <stdint.h>
+#include <unistd.h>
+#include <sys/eventfd.h>
+#include <pthread.h>
 #include <vector>
 #include <functional>
 
+#include "mutex.h"
 #include "epoller.h"
 
 namespace my_muduo {
@@ -15,18 +20,30 @@ class EventLoop {
 public:
     typedef std::vector<Channel*> Channels;
     typedef std::function<void()> BasicFunc;
+    typedef std::vector<BasicFunc> ToDoList;
 
     EventLoop();
     ~EventLoop();
 
-    void Loop();
+    bool IsInThreadLoop() {return ::pthread_self() == tid_;}
     void Update(Channel* channel) {epoller_->Update(channel);}
-    void RunOneFunc(const BasicFunc& func) {func();}
+
+    void Loop();
+    void HandleRead();
+    void RunOneFunc(const BasicFunc& func);
+    void DoToDoList();
+
+    pthread_t DebugShowTid() {return tid_;}
 
 private:
+    pthread_t tid_;
     Epoller* epoller_;
     int wakeup_fd_;
+    Channel* wakeup_channel_;
     Channels active_channels_;
+    ToDoList to_do_list_;
+
+    MutexLock mutex_;
 };
 
 }

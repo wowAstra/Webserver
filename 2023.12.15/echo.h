@@ -7,6 +7,8 @@
 #include "tcpserver.h"
 #include "tcpconnection.h"
 
+static const int thread_nums = 8;
+
 namespace my_muduo {
     class Address;
     class EventLoop;
@@ -21,14 +23,14 @@ public:
         server_.Start();
     }
 
-    void ConnectionCallback(my_muduo::TcpConnection* connection_ptr) {
+    void ConnectionCallback(my_muduo::TcpConnection* connection) {
         printf("server has a new connection. \n");
     }
 
-    void MessageCallback(my_muduo::TcpConnection* connection_ptr) {
-        std::string msg(connection_ptr->Get());
+    void MessageCallback(my_muduo::TcpConnection* connection) {
+        std::string msg(connection->Get());
         printf("server get a message. \n");
-        connection_ptr->Send(msg);
+        connection->Send(msg);
     }
 
 private:
