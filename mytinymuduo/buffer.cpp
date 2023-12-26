@@ -13,10 +13,10 @@ int Buffer::ReadFd(int fd) {
     iv[1].iov_len = sizeof(extrabuf);
 
     const int iovcnt = (writable < static_cast<int>(sizeof(extrabuf)) ? 2 : 1);
-    int readn = readv(fd, iv, iovcnt);
+    int readn = ::readv(fd, iv, iovcnt);
 
     if (readn < 0) {
-        assert(readn >= 0);
+        printf("Buffer::ReadFd readn < 0 SYS_ERR\n");
     }
     else if (readn <= writable) {
         write_index_ += readn;

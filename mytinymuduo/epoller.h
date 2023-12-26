@@ -3,9 +3,10 @@
 
 #include <sys/epoll.h>
 #include <vector>
+#include <unordered_map>
 
 namespace {
-    const int kMaxEvents = 8;
+    const int kDefaultEvents = 16;
 }
 
 namespace my_muduo {
@@ -18,17 +19,21 @@ public:
     typedef std::vector<Channel*> Channels;
 
     Epoller();
+    ~Epoller();
 
+    void Remove(Channel* channel_);
     void Poll(Channels& channels);
-    int EpollWait() {return epoll_wait(epollfd_, &*events_.begin(), kMaxEvents, -1);}
-    int SetNonBlocking(int fd);
+    int EpollWait() {return epoll_wait(epollfd_, &*events_.begin(), static_cast<int>(events_.size()), -1);}
     void FillActiveChannels(int eventnums, Channels& channels);
     void Update(Channel* channel);
     void UpdateChannel(int operation, Channel* channel);
 
 private:
+    typedef std::unordered_map<int, Channel*> ChannelMap;
+
     int epollfd_;
     Events events_;
+    ChannelMap channels_;
 };
 
 }

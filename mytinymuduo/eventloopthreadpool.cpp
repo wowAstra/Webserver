@@ -1,5 +1,7 @@
 #include "eventloopthreadpool.h"
 
+#include <memory>
+
 #include "eventloopthread.h"
 
 using namespace my_muduo;
@@ -13,7 +15,7 @@ EventLoopThreadPool::~EventLoopThreadPool() {}
 void EventLoopThreadPool::StartLoop() {
     for (int i = 0; i < thread_nums_; i++) {
         EventLoopThread* ptr = new EventLoopThread();
-        threads_.emplace_back(ptr);
+        threads_.emplace_back(std::unique_ptr<EventLoopThread>(ptr));
         loops_.emplace_back(ptr->StartLoop());
     }
 }

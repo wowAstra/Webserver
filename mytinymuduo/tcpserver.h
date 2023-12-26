@@ -1,14 +1,18 @@
 #ifndef MY_MUDUO_TCPSERVER_H_
 #define MY_MUDUO_TCPSERVER_H_
 
+#include <memory>
+#include <unordered_map>
+
 #include "callback.h"
 #include "eventloop.h"
 #include "acceptor.h"
 #include "eventloopthreadpool.h"
+#include "tcpconnection.h"
 
 namespace my_muduo {
+
 class Address;
-class EventLoopThreadPool;
 
 class TcpServer {
 public:
@@ -17,7 +21,7 @@ public:
 
     void Start() {
         threads_->StartLoop();
-        loop_->RunOneFunc(std::bind(&Acceptor::Listen, acceptor_));
+        loop_->RunOneFunc(std::bind(&Acceptor::Listen, acceptor_.get()));
     }
 
     void SetConnectionCallback(const ConnectionCallback& callback) {
@@ -32,15 +36,20 @@ public:
         threads_->SetThreadNums(thread_nums);
     }
 
-    void NewConnection(int connfd);
+    void HandleClose(const TcpConnectionPtr& conn);
+    void HanldeCloseInLoop(const TcpConnectionPtr& ptr);
+    void HandleNewConnection(int connfd);
 
 private:
+    typedef std::unordered_map<int, TcpConnectionPtr> ConnectionMap;
+
     EventLoop* loop_;
-    EventLoopThreadPool* threads_;
-    Acceptor* acceptor_;
+    std::unique_ptr<EventLoopThreadPool> threads_;
+    std::unique_ptr<Acceptor> acceptor_;
 
     ConnectionCallback connection_callback_;
     MessageCallback message_callback_;
+    ConnectionMap connections_;
 };
 
 }

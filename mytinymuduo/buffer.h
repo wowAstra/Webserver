@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <string>
 #include <assert.h>
+#include <cstring>
 
 using std::string;
 
@@ -28,6 +29,10 @@ public:
     char* beginwrite() {return begin() + write_index_;}
     const char* beginwrite() const {return begin() + write_index_;}
 
+    void Append(const char* message) {
+        Append(message, strlen(message));
+    }
+
     void Append(const char* message, int len) {
         MakeSureEnoughStorage(len);
         std::copy(message, message + len, beginwrite());
@@ -39,7 +44,8 @@ public:
     }
 
     void Retrieve(int len) {
-        if (read_index_ + len != write_index_) {
+        assert(readablebytes() >= len);
+        if (read_index_ + len < write_index_) {
             read_index_ += len;
         }
         else {
@@ -95,11 +101,11 @@ public:
         if (writablebytes() >= len) return;
         if (writablebytes() + prependablebytes() >= kPrePendIndex + len) {
             std::copy(beginread(), beginwrite(), begin() + kPrePendIndex);
-            write_index_ = 8 + readablebytes();
-            read_index_ = 8;
+            write_index_ = kPrePendIndex + readablebytes();
+            read_index_ = kPrePendIndex;
         }
         else {
-            buffer_.resize(buffer_.size() + len);
+            buffer_.resize(buffer_.capacity() + len);
         }
     }
 

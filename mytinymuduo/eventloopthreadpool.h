@@ -2,6 +2,7 @@
 #define MY_MUDUO_EVENTLOOPTHREADPOOL_H_
 
 #include <vector>
+#include <memory>
 
 namespace my_muduo {
 
@@ -10,7 +11,7 @@ class EventLoop;
 
 class EventLoopThreadPool {
 public:
-    typedef std::vector<EventLoopThread*> Thread;
+    typedef std::vector<std::unique_ptr<EventLoopThread>> Thread;
     typedef std::vector<EventLoop*> Loop;
 
     EventLoopThreadPool(EventLoop* loop);

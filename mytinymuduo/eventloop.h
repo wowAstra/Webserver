@@ -5,8 +5,10 @@
 #include <unistd.h>
 #include <sys/eventfd.h>
 #include <pthread.h>
+
 #include <vector>
 #include <functional>
+#include <memory>
 
 #include "mutex.h"
 #include "epoller.h"
@@ -27,19 +29,20 @@ public:
 
     bool IsInThreadLoop() {return ::pthread_self() == tid_;}
     void Update(Channel* channel) {epoller_->Update(channel);}
+    void Remove(Channel* channel) {epoller_->Remove(channel);}
 
     void Loop();
     void HandleRead();
-    void RunOneFunc(const BasicFunc& func);
+    void QueueOneFunc(BasicFunc func);
+    void RunOneFunc(BasicFunc func);
     void DoToDoList();
-
-    pthread_t DebugShowTid() {return tid_;}
 
 private:
     pthread_t tid_;
-    Epoller* epoller_;
+    std::unique_ptr<Epoller> epoller_;
     int wakeup_fd_;
-    Channel* wakeup_channel_;
+    std::unique_ptr<Channel> wakeup_channel_;
+    bool calling_functors_;
     Channels active_channels_;
     ToDoList to_do_list_;
 

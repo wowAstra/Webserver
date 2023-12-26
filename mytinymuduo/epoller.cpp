@@ -1,15 +1,20 @@
 #include "epoller.h"
 
+#include <assert.h>
 #include <string.h>
 #include <sys/epoll.h>
-#include <fcntl.h>
+#include <vector>
 
 #include "channel.h"
 
 using namespace my_muduo;
 
 Epoller::Epoller()
-    : epollfd_(epoll_create(kMaxEvents)), events_(kMaxEvents) {
+    : epollfd_(::epoll_create1(EPOLL_CLOEXEC)), events_(kDefaultEvents), channels_() {
+}
+
+Epoller::~Epoller() {
+    ::close(epollfd_);
 }
 
 void Epoller::Poll(Channels& channels) {
@@ -23,33 +28,51 @@ void Epoller::FillActiveChannels(int eventnums, Channels& channels) {
         ptr->SetReceiveEvents(events_[i].events);
         channels.emplace_back(ptr);
     }
+    if (eventnums == static_cast<int>(events_.size())) {
+        events_.resize(eventnums * 2);
+    }
 }
 
-int Epoller::SetNonBlocking(int fd) {
-    int old_state = fcntl(fd, F_GETFL);
-    int new_state = old_state | O_NONBLOCK;
-    fcntl(fd, F_SETFL, new_state);
-    return new_state;
+void Epoller::Remove(Channel* channel) {
+    int fd = channel->fd();
+    ChannelState state = channel->state();
+    assert(state == kDeleted || state == kAdded);
+
+    if (state == kAdded) {
+        UpdateChannel(EPOLL_CTL_DEL, channel);
+    }
+    channel->SetChannelState(kNew);
+    channels_.erase(fd);
+    return;
 }
 
 void Epoller::Update(Channel* channel) {
     int op = 0, events = channel->events();
     ChannelState state = channel->state();
+    int fd = channel->fd();
+
     if (state == kNew || state == kDeleted) {
-        channel->SetChannelState(kAdded);
-        if (events & EPOLLIN) {
-            op = EPOLL_CTL_ADD;
-            SetNonBlocking(channel->fd());
-        }
-        else if (events & EPOLLRDHUP) {
-            op = EPOLL_CTL_DEL;
+        if (state == kNew) {
+            assert(channels_.find(fd) == channels_.end());
+            channels_[fd] = channel;
         }
         else {
-
+            assert(channels_.find(fd) != channels_.end());
+            assert(channels_[fd] == channel);
         }
+        op = EPOLL_CTL_ADD;
+        channel->SetChannelState(kAdded);
     }
     else {
-        op = EPOLL_CTL_MOD;
+        assert(channels_.find(fd) != channels_.end());
+        assert(channels_[fd] == channel);
+        if (events == 0) {
+            op = EPOLL_CTL_DEL;
+            channel->SetChannelState(kDeleted);
+        }
+        else {
+            op = EPOLL_CTL_MOD;
+        }
     }
 
     UpdateChannel(op, channel);

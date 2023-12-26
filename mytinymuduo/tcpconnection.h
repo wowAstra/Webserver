@@ -5,6 +5,8 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <string>
+#include <memory>
+#include <utility>
 
 #include "callback.h"
 #include "channel.h"
@@ -17,36 +19,42 @@ namespace my_muduo {
     
 class EventLoop;
 
-class TcpConnection {
+class TcpConnection : public std::enable_shared_from_this<TcpConnection> {
 public:
+    enum ConnectionState {
+        kConnected,
+        kDisconnected
+    };
+
     TcpConnection(EventLoop* loop, int connfd);
     ~TcpConnection();
 
-    void SetConnectionCallback(const ConnectionCallback& callback) {
-        connection_callback_ = callback;
+    void SetConnectionCallback(ConnectionCallback callback) {
+        connection_callback_ = std::move(callback);
     }
 
-    void SetMessageCallback(const MessageCallback& callback) {
-        message_callback_ = callback;
+    void SetMessageCallback(MessageCallback callback) {
+        message_callback_ = std::move(callback);
+    }
+
+    void SetCloseCallback(CloseCallback callback) {
+        close_callback_ = std::move(callback);
     }
 
     void ConnectionEstablished() {
+        state_ = kConnected;
         channel_->EnableReading();
-        connection_callback_(this, &input_buffer_);
+        connection_callback_(shared_from_this(), &input_buffer_);
     }
 
     HttpContent* GetHttpContent() {
         return &content_;
     }
 
-    void Shutdown() {
-        if (!channel_->IsWriting()) {
-            shutdown_ = true;
-            ::shutdown(fd_, SHUT_WR);
-        }
-    }
-
-    bool IsShutdown() const {return shutdown_;}
+    void Shutdown();
+    bool IsShutdown() {return shutdown_state_;}
+    void ConnectionDestructor();
+    void HandleClose();
     void HandleMessage();
     void HandleWrite();
     void Send(Buffer* buffer);
@@ -54,18 +62,25 @@ public:
     void Send(const char* message, int len);
     void Send(const char* message) {Send(message, strlen(message));}
 
+    int fd() const {return fd_;}
+    EventLoop* loop() const {return loop_;}
+
 private:
     EventLoop* loop_;
     int fd_;
-    bool shutdown_;
-    Channel* channel_;
+    ConnectionState state_;
+    bool shutdown_state_;
+    std::unique_ptr<Channel> channel_;
     Buffer input_buffer_;
     Buffer output_buffer_;
     HttpContent content_;
 
     ConnectionCallback connection_callback_;
     MessageCallback message_callback_;
+    CloseCallback close_callback_;
 };
+
+typedef std::shared_ptr<TcpConnection> TcpConnectionPtr;
 
 }
 

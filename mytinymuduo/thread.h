@@ -10,7 +10,7 @@ namespace my_muduo {
 
 class Thread {
 public:
-    typedef std::function<void()> ThreadFunc;
+    typedef std::function<void ()> ThreadFunc;
 
     Thread(const ThreadFunc& func);
     ~Thread();

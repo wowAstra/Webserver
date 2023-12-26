@@ -2,6 +2,7 @@
 #define MY_MUDUO_CHANNEL_H_
 
 #include <sys/epoll.h>
+#include <utility>
 
 #include "eventloop.h"
 #include "callback.h"
@@ -21,16 +22,16 @@ public:
 
     void HandleEvent();
 
-    void SetReadCallback(const ReadCallback& callback) {
-        read_callback_ = callback;
+    void SetReadCallback(ReadCallback callback) {
+        read_callback_ = std::move(callback);
     }
 
-    void SetWriteCallback(const WriteCallback& callback) {
-        write_callback_ = callback;
+    void SetWriteCallback(WriteCallback callback) {
+        write_callback_ = std::move(callback);
     }
 
     void EnableReading() {
-        events_ |= EPOLLIN;
+        events_ |= (EPOLLIN | EPOLLPRI);
         Update();
     }
 
@@ -39,13 +40,14 @@ public:
         Update();
     }
 
-    void DisableWriting() {
-        events_ &= ~EPOLLOUT;
+    void DisableAll() {
+        events_ = 0;
         Update();
     }
 
-    void RemoveFd() {
-
+    void DisableWriting() {
+        events_ &= ~EPOLLOUT;
+        Update();
     }
 
     void Update() {
@@ -66,7 +68,7 @@ public:
     ChannelState state() {return state_;}
 
     bool IsWriting() {return events_ & EPOLLOUT;}
-    bool IsReading() {return events_ & EPOLLIN;}
+    bool IsReading() {return events_ & (EPOLLIN | EPOLLPRI);}
 
 private:
     EventLoop* loop_;
