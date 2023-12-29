@@ -5,10 +5,11 @@
 #include <functional>
 
 #include "latch.h"
+#include "noncopyable.h"
 
 namespace my_muduo {
 
-class Thread {
+class Thread : public NonCopyAble {
 public:
     typedef std::function<void ()> ThreadFunc;
 

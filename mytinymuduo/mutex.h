@@ -1,11 +1,12 @@
 #ifndef MY_MUDUO_MUTEX_H_
 #define MY_MUDUO_MUTEX_H_
 
-#include "pthread.h"
+#include <pthread.h>
+#include "noncopyable.h"
 
 namespace my_muduo {
 
-class MutexLock {
+class MutexLock : public NonCopyAble {
 public:
     MutexLock() {
         pthread_mutex_init(&mutex_, nullptr);
@@ -29,7 +30,7 @@ private:
 
 class MutexLockGuard {
 public:
-    MutexLockGuard(MutexLock& mutex)
+    explicit MutexLockGuard(MutexLock& mutex)
         : mutex_(mutex) {
         mutex_.Lock();
     }

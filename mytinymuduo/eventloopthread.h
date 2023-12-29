@@ -4,12 +4,13 @@
 #include "thread.h"
 #include "mutex.h"
 #include "condition.h"
+#include "noncopyable.h"
 
 namespace my_muduo {
 
 class EventLoop;
 
-class EventLoopThread {
+class EventLoopThread : public NonCopyAble {
 public:
     EventLoopThread();
     ~EventLoopThread();

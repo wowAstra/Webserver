@@ -6,6 +6,7 @@
 
 #include "eventloop.h"
 #include "callback.h"
+#include "noncopyable.h"
 
 namespace my_muduo {
 
@@ -15,18 +16,26 @@ enum ChannelState {
     kDeleted
 };
     
-class Channel {
+class Channel /*: public NonCopyAble*/ {
 public:
     Channel(EventLoop* loop, const int& fd);
     ~Channel();
 
     void HandleEvent();
 
-    void SetReadCallback(ReadCallback callback) {
+    void SetReadCallback(const ReadCallback& callback) {
+        read_callback_ = callback;
+    }
+
+    void SetReadCallback(ReadCallback&& callback) {
         read_callback_ = std::move(callback);
     }
 
-    void SetWriteCallback(WriteCallback callback) {
+    void SetWriteCallback(const WriteCallback& callback) {
+        write_callback_ = callback;
+    }
+    
+    void SetWriteCallback(WriteCallback&& callback) {
         write_callback_ = std::move(callback);
     }
 
@@ -62,10 +71,10 @@ public:
         state_ = state;
     }
 
-    int fd() {return fd_;}
-    int events() {return events_;}
-    int recv_events() {return recv_events_;}
-    ChannelState state() {return state_;}
+    int fd() const {return fd_;}
+    int events() const {return events_;}
+    int recv_events() const {return recv_events_;}
+    ChannelState state() const {return state_;}
 
     bool IsWriting() {return events_ & EPOLLOUT;}
     bool IsReading() {return events_ & (EPOLLIN | EPOLLPRI);}

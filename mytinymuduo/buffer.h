@@ -4,18 +4,23 @@
 #include <vector>
 #include <algorithm>
 #include <string>
+
 #include <assert.h>
 #include <cstring>
+
+#include "noncopyable.h"
 
 using std::string;
 
 namespace my_muduo {
 
-static const int kPrePendIndex = 0;
+static const int kPrePendIndex = 8;
+static const int kInitialSize = 1024;
+static const char* kCRLF = "\r\n";
 
-class Buffer {
+class Buffer /*: public NonCopyAble*/ {
 public:
-    Buffer() : buffer_(1024), read_index_(kPrePendIndex), write_index_(kPrePendIndex) {}
+    Buffer() : buffer_(kInitialSize), read_index_(kPrePendIndex), write_index_(kPrePendIndex) {}
     ~Buffer() {}
 
     int ReadFd(int fd);
@@ -28,6 +33,11 @@ public:
 
     char* beginwrite() {return begin() + write_index_;}
     const char* beginwrite() const {return begin() + write_index_;}
+
+    const char* FindCRLF() const {
+        const char* find = std::search(Peek(), beginwrite(), kCRLF, kCRLF + 2);
+        return find == beginwrite() ? nullptr : find;
+    }
 
     void Append(const char* message) {
         Append(message, strlen(message));
@@ -49,8 +59,7 @@ public:
             read_index_ += len;
         }
         else {
-            write_index_ = kPrePendIndex;
-            read_index_ = write_index_;
+            RetrieveAll();
         }
     }
 
@@ -94,7 +103,7 @@ public:
     }
 
     int readablebytes() const {return write_index_ - read_index_;}
-    int writablebytes() const {return buffer_.capacity() - write_index_;}
+    int writablebytes() const {return buffer_.size() - write_index_;}
     int prependablebytes() const {return read_index_;}
 
     void MakeSureEnoughStorage(int len) {
@@ -105,7 +114,7 @@ public:
             read_index_ = kPrePendIndex;
         }
         else {
-            buffer_.resize(buffer_.capacity() + len);
+            buffer_.resize(write_index_ + len);
         }
     }
 

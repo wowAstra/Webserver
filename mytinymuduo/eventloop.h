@@ -12,13 +12,14 @@
 
 #include "mutex.h"
 #include "epoller.h"
+#include "noncopyable.h"
 
 namespace my_muduo {
     
 class Epoller;
 class Channel;
 
-class EventLoop {
+class EventLoop /*: public NonCopyAble*/ {
 public:
     typedef std::vector<Channel*> Channels;
     typedef std::function<void()> BasicFunc;

@@ -3,16 +3,35 @@
 #include <unistd.h>
 #include <sys/eventfd.h>
 #include <pthread.h>
+#include <signal.h>
+
 #include <utility>
+#include <assert.h>
 
 #include "mutex.h"
 #include "channel.h"
 
-namespace my_muduo {
+using namespace my_muduo;
+
+namespace {
+
+class IgnoreSigPipe {
+public:
+    IgnoreSigPipe() {
+        ::signal(SIGPIPE, SIG_IGN);
+    }
+};
+
+IgnoreSigPipe initObj;
+
+}
 
 EventLoop::EventLoop()
-    : tid_(::pthread_self()), epoller_(new Epoller()), wakeup_fd_(::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC)),
-      wakeup_channel_(new Channel(this, wakeup_fd_)), calling_functors_(false) {
+    : tid_(::pthread_self()), 
+      epoller_(new Epoller()), 
+      wakeup_fd_(::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC)),
+      wakeup_channel_(new Channel(this, wakeup_fd_)), 
+      calling_functors_(false) {
     wakeup_channel_->SetReadCallback(std::bind(&EventLoop::HandleRead, this));
     wakeup_channel_->EnableReading();
 }
@@ -20,9 +39,11 @@ EventLoop::EventLoop()
 EventLoop::~EventLoop() {
     wakeup_channel_->DisableAll();
     Remove(wakeup_channel_.get());
+    close(wakeup_fd_);
 }
 
 void EventLoop::Loop() {
+    assert(IsInThreadLoop());
     while (1) {
         active_channels_.clear();
         epoller_->Poll(active_channels_);
@@ -35,7 +56,9 @@ void EventLoop::Loop() {
 
 void EventLoop::HandleRead() {
     uint64_t read_one_byte = 1;
-    ::read(wakeup_fd_, &read_one_byte, sizeof(read_one_byte));
+    ssize_t read_size = ::read(wakeup_fd_, &read_one_byte, sizeof(read_one_byte));
+    (void) read_size;
+    assert(read_size == sizeof(read_one_byte));
     return;
 }
 
@@ -47,7 +70,9 @@ void EventLoop::QueueOneFunc(BasicFunc func) {
 
     if (!IsInThreadLoop() || calling_functors_) {
         uint64_t write_one_byte = 1;
-        ::write(wakeup_fd_, &write_one_byte, sizeof(write_one_byte));
+        int write_byte = ::write(wakeup_fd_, &write_one_byte, sizeof(write_one_byte));
+        (void) write_byte;
+        assert(write_byte == sizeof(write_one_byte));
     }
 }
 
@@ -72,6 +97,4 @@ void EventLoop::DoToDoList() {
         func();
     }
     calling_functors_ = false;
-}
-
 }

@@ -2,19 +2,20 @@
 #define MY_MUDUO_TCPSERVER_H_
 
 #include <memory>
-#include <unordered_map>
+#include <map>
 
 #include "callback.h"
 #include "eventloop.h"
 #include "acceptor.h"
 #include "eventloopthreadpool.h"
 #include "tcpconnection.h"
+#include "noncopyable.h"
 
 namespace my_muduo {
 
 class Address;
 
-class TcpServer {
+class TcpServer /*: public NonCopyAble*/ {
 public:
     TcpServer(EventLoop* loop, const Address& address);
     ~TcpServer();
@@ -28,8 +29,16 @@ public:
         connection_callback_ = callback;
     }
 
+    void SetConnectionCallback(ConnectionCallback&& callback) {
+        connection_callback_ = std::move(callback);
+    }
+
     void SetMessageCallback(const MessageCallback& callback) {
         message_callback_ = callback;
+    }
+
+    void SetMessageCallback(MessageCallback&& callback) {
+        message_callback_ = std::move(callback);
     }
 
     void SetThreadNums(int thread_nums) {
@@ -41,7 +50,7 @@ public:
     void HandleNewConnection(int connfd);
 
 private:
-    typedef std::unordered_map<int, TcpConnectionPtr> ConnectionMap;
+    typedef std::map<int, TcpConnectionPtr> ConnectionMap;
 
     EventLoop* loop_;
     std::unique_ptr<EventLoopThreadPool> threads_;

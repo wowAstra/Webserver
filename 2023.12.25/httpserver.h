@@ -43,7 +43,12 @@ public:
     }
 
     void MessageCallback(const TcpConnectionPtr& connection, Buffer* buffer);
-    void SetHttpResponseCallback(HttpResponseCallback response_callback) {
+
+    void SetHttpResponseCallback(const HttpResponseCallback& response_callback) {
+        response_callback_ = response_callback;
+    }
+
+    void SetHttpResponseCallback(HttpResponseCallback&& response_callback) {
         response_callback_ = std::move(response_callback);
     }
 

@@ -4,12 +4,14 @@
 #include <vector>
 #include <memory>
 
+#include "noncopyable.h"
+
 namespace my_muduo {
 
 class EventLoopThread;
 class EventLoop;
 
-class EventLoopThreadPool {
+class EventLoopThreadPool : public NonCopyAble {
 public:
     typedef std::vector<std::unique_ptr<EventLoopThread>> Thread;
     typedef std::vector<EventLoop*> Loop;

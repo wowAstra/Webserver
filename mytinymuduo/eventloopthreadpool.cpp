@@ -7,7 +7,9 @@
 using namespace my_muduo;
 
 EventLoopThreadPool::EventLoopThreadPool(EventLoop* loop)
-    : base_loop_(loop), threads_(), loops_(), thread_nums_(0), next_(0) {  
+    : base_loop_(loop), 
+      thread_nums_(0), 
+      next_(0) {  
 }
 
 EventLoopThreadPool::~EventLoopThreadPool() {}
@@ -23,8 +25,9 @@ void EventLoopThreadPool::StartLoop() {
 EventLoop* EventLoopThreadPool::NextLoop() {
     EventLoop* ret = base_loop_;
     if (!loops_.empty()) {
-        ret = loops_[next_];
-        next_ = (next_ + 1) % thread_nums_;
+        ret = loops_[next_++];
+        if (next_ == static_cast<int>(loops_.size()))
+            next_ = 0;
     }
     return ret;
 }

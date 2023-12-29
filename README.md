@@ -66,3 +66,4 @@ vpath用来指定makefile的搜索路径；
 2.为什么要用::write代替原来的send；
 3.shared_from_this是什么；
 4.为什么原来的直接赋值变成了std::move()，以及相应的callback中的函数形式为什么要改成现在这样；
+5.为什么会出现一些readn < 0的情况；

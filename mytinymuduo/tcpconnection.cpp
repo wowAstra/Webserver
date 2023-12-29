@@ -10,7 +10,11 @@
 using namespace my_muduo;
 
 TcpConnection::TcpConnection(EventLoop* loop, int connfd)
-    :loop_(loop), fd_(connfd), state_(kDisconnected), shutdown_state_(false), channel_(new Channel(loop_, fd_)) {
+    :loop_(loop), 
+     fd_(connfd), 
+     state_(kDisconnected), 
+     shutdown_state_(false), 
+     channel_(new Channel(loop_, fd_)) {
     channel_->SetReadCallback(std::bind(&TcpConnection::HandleMessage, this));
     channel_->SetWriteCallback(std::bind(&TcpConnection::HandleWrite, this));
 }
@@ -43,18 +47,30 @@ void TcpConnection::HandleMessage() {
     else if (read_size == 0) {
         HandleClose();
     }
+    else {
+        printf("TcpConnection::HandleMessage Read SYS_Err\n");
+    }
 }
 
 void TcpConnection::HandleWrite() {
-    int len = output_buffer_.readablebytes();
-    int remaining = len;
-    int send_size = ::write(fd_, output_buffer_.Peek(), remaining);
-    remaining -= send_size;
-    output_buffer_.Retrieve(send_size);
+    if (channel_->IsWriting()) {
+        int len = output_buffer_.readablebytes();
+        int remaining = len;
+        int send_size = ::write(fd_, output_buffer_.Peek(), remaining);
+        if (send_size < 0) {
+            assert(send_size > 0);
+            if (errno != EWOULDBLOCK) {
+                printf("TcpConnection::HandleWrite Write SYS_ERR\n");
+            }
+            return;
+        }
+        remaining -= send_size;
+        output_buffer_.Retrieve(send_size);
 
-    assert(remaining <= len);
-    if (!remaining) {
-        channel_->DisableWriting();
+        assert(remaining <= len);
+        if (!output_buffer_.readablebytes()) {
+            channel_->DisableWriting();
+        }
     }
 }
 
@@ -63,7 +79,14 @@ void TcpConnection::Send(const char* message, int len) {
     int send_size = 0;
     if (!channel_->IsWriting() && output_buffer_.readablebytes() == 0) {
         send_size = ::write(fd_, message, len);
-        remaining -= send_size;
+        if (send_size >= 0)
+            remaining -= send_size;
+        else {
+            if (errno != EWOULDBLOCK) {
+                printf("TcpConnection::Send Write SYS_ERR\n");
+            }
+            return;
+        }
     }
 
     assert(remaining <= len);
@@ -76,18 +99,23 @@ void TcpConnection::Send(const char* message, int len) {
 }
 
 void TcpConnection::Shutdown() {
+    shutdown_state_ = true;
     if (!channel_->IsWriting()) {
-        ::shutdown(fd_, SHUT_WR);
-        shutdown_state_ = true;
+        int ret = ::shutdown(fd_, SHUT_WR);
+        if (ret < 0) {
+            printf("TcpConnection::Shutdown shutdown SYS_ERR\n");
+        }
     }
 }
 
 void TcpConnection::Send(Buffer* buffer) {
+    if (state_ == kDisconnected) return;
     Send(buffer->Peek(), buffer->readablebytes());
     buffer->RetrieveAll();
 }
 
 void TcpConnection::Send(const string& message) {
+    if (state_ == kDisconnected) return;
     Send(message.data(), message.size());
 }
 

@@ -10,7 +10,9 @@
 using namespace my_muduo;
 
 Epoller::Epoller()
-    : epollfd_(::epoll_create1(EPOLL_CLOEXEC)), events_(kDefaultEvents), channels_() {
+    : epollfd_(::epoll_create1(EPOLL_CLOEXEC)), 
+      events_(kDefaultEvents), 
+      channels_() {
 }
 
 Epoller::~Epoller() {
@@ -80,10 +82,11 @@ void Epoller::Update(Channel* channel) {
 
 void Epoller::UpdateChannel(int operation, Channel* channel) {
     struct epoll_event event;
-    memset(&event, '\0', sizeof(struct epoll_event));
     event.events = channel->events();
     event.data.ptr = static_cast<void *>(channel);
 
-    epoll_ctl(epollfd_, operation, channel->fd(), &event);
+    if (epoll_ctl(epollfd_, operation, channel->fd(), &event) < 0) {
+        printf("Epoller::UpdateChannel epoll_ctl SYS_ERR\n");
+    }
     return;
 }

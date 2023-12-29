@@ -10,7 +10,10 @@
 using namespace my_muduo;
 
 EventLoopThread::EventLoopThread()
-    : loop_(nullptr), thread_(std::bind(&EventLoopThread::StartFunc, this)), mutex_(), cond_(mutex_) {
+    : loop_(nullptr), 
+      thread_(std::bind(&EventLoopThread::StartFunc, this)), 
+      mutex_(), 
+      cond_(mutex_) {
 }
 
 EventLoopThread::~EventLoopThread() {}

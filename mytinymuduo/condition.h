@@ -1,14 +1,15 @@
 #ifndef MY_MUDUO_CONDITION_H_
 #define MY_MUDUO_CONDITION_H_
 
-#include "pthread.h"
+#include <pthread.h>
 #include "mutex.h"
+#include "noncopyable.h"
 
-namespace my_muduo {
+namespace my_muduo{
 
-class Condition {
+class Condition : public NonCopyAble {
 public:
-    Condition(MutexLock& mutex) 
+    explicit Condition(MutexLock& mutex) 
         : mutex_(mutex) {
         pthread_cond_init(&cond_, nullptr);
     }

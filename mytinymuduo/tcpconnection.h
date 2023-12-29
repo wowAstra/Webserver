@@ -4,6 +4,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+
 #include <string>
 #include <memory>
 #include <utility>
@@ -12,6 +13,7 @@
 #include "channel.h"
 #include "buffer.h"
 #include "httpcontent.h"
+#include "noncopyable.h"
 
 using std::string;
 
@@ -19,7 +21,7 @@ namespace my_muduo {
     
 class EventLoop;
 
-class TcpConnection : public std::enable_shared_from_this<TcpConnection> {
+class TcpConnection : public std::enable_shared_from_this<TcpConnection>/*, NonCopyAble*/ {
 public:
     enum ConnectionState {
         kConnected,
@@ -29,15 +31,27 @@ public:
     TcpConnection(EventLoop* loop, int connfd);
     ~TcpConnection();
 
-    void SetConnectionCallback(ConnectionCallback callback) {
+    void SetConnectionCallback(const ConnectionCallback& callback) {
+        connection_callback_ = callback;
+    }
+
+    void SetConnectionCallback(ConnectionCallback&& callback) {
         connection_callback_ = std::move(callback);
     }
 
-    void SetMessageCallback(MessageCallback callback) {
+    void SetMessageCallback(const MessageCallback& callback) {
+        message_callback_ = callback;
+    }
+
+    void SetMessageCallback(MessageCallback&& callback) {
         message_callback_ = std::move(callback);
     }
 
-    void SetCloseCallback(CloseCallback callback) {
+    void SetCloseCallback(const CloseCallback& callback) {
+        close_callback_ = callback;
+    }
+
+    void SetCloseCallback(CloseCallback&& callback) {
         close_callback_ = std::move(callback);
     }
 
@@ -45,10 +59,6 @@ public:
         state_ = kConnected;
         channel_->EnableReading();
         connection_callback_(shared_from_this(), &input_buffer_);
-    }
-
-    HttpContent* GetHttpContent() {
-        return &content_;
     }
 
     void Shutdown();
@@ -64,6 +74,7 @@ public:
 
     int fd() const {return fd_;}
     EventLoop* loop() const {return loop_;}
+    HttpContent* GetHttpContent() {return &content_;}
 
 private:
     EventLoop* loop_;

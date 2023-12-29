@@ -9,13 +9,6 @@
 #include "httpparsestate.h"
 
 namespace my_muduo {
-
-enum HttpRequestParseLine {
-    kLineOk,
-    kLineMore,
-    kLineErrno
-};
-
 class HttpContent {
 public:
     HttpContent();
@@ -27,14 +20,13 @@ public:
 
     const HttpRequest& request() const {return request_;}
     void ResetContentState() {
+        HttpRequest tmp;
+        request_.Swap(tmp);
         parse_state_ = kParseRequestLine;
-        line_state_ = kLineOk;
     }
 
 private:
-    int checked_index_;
     HttpRequest request_;
-    HttpRequestParseLine line_state_;
     HttpRequestParseState parse_state_;
 };
 

@@ -1,7 +1,9 @@
 #include "tcpserver.h"
 
 #include <assert.h>
+
 #include <utility>
+
 #include "eventloopthreadpool.h"
 #include "acceptor.h"
 #include "tcpconnection.h"
@@ -9,7 +11,9 @@
 using namespace my_muduo;
 
 TcpServer::TcpServer(EventLoop* loop, const Address& address)
-    :loop_(loop), threads_(new EventLoopThreadPool(loop_)), acceptor_(new Acceptor(loop, address)) {
+    :loop_(loop), 
+     threads_(new EventLoopThreadPool(loop_)), 
+     acceptor_(new Acceptor(loop, address)) {
     acceptor_->SetNewConnectionCallback(std::bind(&TcpServer::HandleNewConnection, this, _1));
 }
 
