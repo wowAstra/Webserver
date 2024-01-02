@@ -26,8 +26,7 @@ class Buffer;
 class HttpResponse {
 public:
     HttpResponse(bool close_connection)
-        : type_("text/plain"), 
-          close_connection_(close_connection) {
+        : type_("text/plain"), close_connection_(close_connection) {
     }
     ~HttpResponse() {}
 

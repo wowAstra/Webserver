@@ -14,6 +14,7 @@
 #include "buffer.h"
 #include "httpcontent.h"
 #include "noncopyable.h"
+#include "timestamp.h"
 
 using std::string;
 
@@ -61,6 +62,10 @@ public:
         connection_callback_(shared_from_this(), &input_buffer_);
     }
 
+    void UpdateTimestamp(Timestamp newtime) {
+        timestamp_ = newtime;
+    }
+
     void Shutdown();
     bool IsShutdown() {return shutdown_state_;}
     void ConnectionDestructor();
@@ -74,6 +79,7 @@ public:
 
     int fd() const {return fd_;}
     EventLoop* loop() const {return loop_;}
+    Timestamp timestamp() {return timestamp_;}
     HttpContent* GetHttpContent() {return &content_;}
 
 private:
@@ -85,6 +91,7 @@ private:
     Buffer input_buffer_;
     Buffer output_buffer_;
     HttpContent content_;
+    Timestamp timestamp_;
 
     ConnectionCallback connection_callback_;
     MessageCallback message_callback_;

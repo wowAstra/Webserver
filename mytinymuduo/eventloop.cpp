@@ -31,6 +31,7 @@ EventLoop::EventLoop()
       epoller_(new Epoller()), 
       wakeup_fd_(::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC)),
       wakeup_channel_(new Channel(this, wakeup_fd_)), 
+      timer_queue_(new TimerQueue(this)),
       calling_functors_(false) {
     wakeup_channel_->SetReadCallback(std::bind(&EventLoop::HandleRead, this));
     wakeup_channel_->EnableReading();
