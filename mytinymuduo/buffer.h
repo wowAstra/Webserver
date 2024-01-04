@@ -18,7 +18,7 @@ static const int kPrePendIndex = 8;
 static const int kInitialSize = 1024;
 static const char* kCRLF = "\r\n";
 
-class Buffer /*: public NonCopyAble*/ {
+class Buffer : public NonCopyAble {
 public:
     Buffer() : buffer_(kInitialSize), read_index_(kPrePendIndex), write_index_(kPrePendIndex) {}
     ~Buffer() {}

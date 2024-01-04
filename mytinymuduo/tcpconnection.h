@@ -22,14 +22,16 @@ namespace my_muduo {
     
 class EventLoop;
 
-class TcpConnection : public std::enable_shared_from_this<TcpConnection>/*, NonCopyAble*/ {
+class TcpConnection : public std::enable_shared_from_this<TcpConnection>, NonCopyAble {
 public:
     enum ConnectionState {
+        kConnecting,
         kConnected,
+        kDisconnecting,
         kDisconnected
     };
 
-    TcpConnection(EventLoop* loop, int connfd);
+    TcpConnection(EventLoop* loop, int connfd, int id);
     ~TcpConnection();
 
     void SetConnectionCallback(const ConnectionCallback& callback) {
@@ -58,6 +60,7 @@ public:
 
     void ConnectionEstablished() {
         state_ = kConnected;
+        channel_->Tie(shared_from_this());
         channel_->EnableReading();
         connection_callback_(shared_from_this(), &input_buffer_);
     }
@@ -67,9 +70,11 @@ public:
     }
 
     void Shutdown();
-    bool IsShutdown() {return shutdown_state_;}
+    bool IsShutdown() {return state_ == kDisconnecting;}
+    int GetErrno() const;
     void ConnectionDestructor();
     void HandleClose();
+    void HandleError();
     void HandleMessage();
     void HandleWrite();
     void Send(Buffer* buffer);
@@ -78,6 +83,7 @@ public:
     void Send(const char* message) {Send(message, strlen(message));}
 
     int fd() const {return fd_;}
+    int id() const {return connection_id_;}
     EventLoop* loop() const {return loop_;}
     Timestamp timestamp() {return timestamp_;}
     HttpContent* GetHttpContent() {return &content_;}
@@ -85,6 +91,7 @@ public:
 private:
     EventLoop* loop_;
     int fd_;
+    int connection_id_;
     ConnectionState state_;
     bool shutdown_state_;
     std::unique_ptr<Channel> channel_;

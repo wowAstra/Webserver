@@ -15,6 +15,10 @@ public:
         pthread_mutex_destroy(&mutex_);
     }
 
+    pthread_mutex_t* pthreadmutex() {
+        return &mutex_;
+    }
+
     bool Lock() {
         return pthread_mutex_lock(&mutex_) == 0;
     }

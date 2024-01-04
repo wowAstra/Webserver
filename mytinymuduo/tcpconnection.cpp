@@ -3,20 +3,25 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <assert.h>
+#include <errno.h>
+#include <string.h>
 
 #include "channel.h"
 #include "buffer.h"
+#include "logging.h"
 
 using namespace my_muduo;
 
-TcpConnection::TcpConnection(EventLoop* loop, int connfd)
+TcpConnection::TcpConnection(EventLoop* loop, int connfd, int id)
     :loop_(loop), 
      fd_(connfd), 
-     state_(kDisconnected), 
+     connection_id_(id),
+     state_(kConnecting), 
      shutdown_state_(false), 
      channel_(new Channel(loop_, fd_)) {
     channel_->SetReadCallback(std::bind(&TcpConnection::HandleMessage, this));
     channel_->SetWriteCallback(std::bind(&TcpConnection::HandleWrite, this));
+    channel_->SetErrorCallback(std::bind(&TcpConnection::HandleError, this));
 }
 
 TcpConnection::~TcpConnection() {
@@ -24,11 +29,23 @@ TcpConnection::~TcpConnection() {
 }
 
 void TcpConnection::ConnectionDestructor() {
-    if (state_ == kConnected) {
+    if (state_ == kDisconnecting || state_ == kConnected) {
         state_ = kDisconnected;
         channel_->DisableAll();
     }
     loop_->Remove(channel_.get());
+}
+
+int TcpConnection::GetErrno() const {
+    int optval;
+    socklen_t optlen = static_cast<socklen_t>(sizeof optval);
+
+    if (::getsockopt(fd_, SOL_SOCKET, SO_ERROR, &optval, &optlen) < 0) {
+        return errno;
+    }
+    else {
+        return optval;
+    }
 }
 
 void TcpConnection::HandleClose() {
@@ -37,6 +54,10 @@ void TcpConnection::HandleClose() {
 
     TcpConnectionPtr guard(shared_from_this());
     close_callback_(guard);
+}
+
+void TcpConnection::HandleError() {
+    //LOG_ERROR << "TcpConnection::HandleError" << " : " << ErrorToString(GetErrno());
 }
 
 void TcpConnection::HandleMessage() {
@@ -48,7 +69,7 @@ void TcpConnection::HandleMessage() {
         HandleClose();
     }
     else {
-        printf("TcpConnection::HandleMessage Read SYS_Err\n");
+        //LOG_ERROR << "TcpConnection::HandleMessage read failed";
     }
 }
 
@@ -60,7 +81,7 @@ void TcpConnection::HandleWrite() {
         if (send_size < 0) {
             assert(send_size > 0);
             if (errno != EWOULDBLOCK) {
-                printf("TcpConnection::HandleWrite Write SYS_ERR\n");
+                //LOG_ERROR << "TcpConnection::HandleWrite write failed";
             }
             return;
         }
@@ -70,6 +91,9 @@ void TcpConnection::HandleWrite() {
         assert(remaining <= len);
         if (!output_buffer_.readablebytes()) {
             channel_->DisableWriting();
+            if (state_ == kDisconnecting) {
+                Shutdown();
+            }
         }
     }
 }
@@ -78,12 +102,12 @@ void TcpConnection::Send(const char* message, int len) {
     int remaining = len;
     int send_size = 0;
     if (!channel_->IsWriting() && output_buffer_.readablebytes() == 0) {
-        send_size = ::write(fd_, message, len);
+        send_size = static_cast<int>(::write(fd_, message, len));
         if (send_size >= 0)
             remaining -= send_size;
         else {
             if (errno != EWOULDBLOCK) {
-                printf("TcpConnection::Send Write SYS_ERR\n");
+                //LOG_ERROR << "TcpConnection::Send write failed";
             }
             return;
         }
@@ -99,11 +123,11 @@ void TcpConnection::Send(const char* message, int len) {
 }
 
 void TcpConnection::Shutdown() {
-    shutdown_state_ = true;
+    state_ = kDisconnecting;
     if (!channel_->IsWriting()) {
         int ret = ::shutdown(fd_, SHUT_WR);
         if (ret < 0) {
-            printf("TcpConnection::Shutdown shutdown SYS_ERR\n");
+            //LOG_ERROR << "TcpConnection::Shutdown shutdown failed";
         }
     }
 }
@@ -116,6 +140,6 @@ void TcpConnection::Send(Buffer* buffer) {
 
 void TcpConnection::Send(const string& message) {
     if (state_ == kDisconnected) return;
-    Send(message.data(), message.size());
+    Send(message.data(), static_cast<int>(message.size()));
 }
 

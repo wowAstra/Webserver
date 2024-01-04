@@ -23,7 +23,7 @@ void HttpServer::MessageCallback(const TcpConnectionPtr& connection,
     HttpContent* content = connection->GetHttpContent();
     if (auto_close_idleconnection_) {
         connection->UpdateTimestamp(Timestamp::Now());
-        printf("%s HttpServer::MessageCallback\n", Timestamp::Now().ToFormattedString().data());
+        // printf("%s HttpServer::MessageCallback\n", Timestamp::Now().ToFormattedString().data());
     }
     if (connection->IsShutdown()) return;
     

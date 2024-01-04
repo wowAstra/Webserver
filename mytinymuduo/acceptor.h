@@ -16,9 +16,9 @@ class EventLoop;
 class Address;
 class Channel;
 
-class Acceptor /*: public NonCopyAble*/ {
+class Acceptor : public NonCopyAble {
 public :
-    typedef std::function<void (int)> NewConnectionCallback;
+    typedef std::function<void (int, const Address&)> NewConnectionCallback;
 
     Acceptor(EventLoop* loop, const Address& address);
     ~Acceptor();

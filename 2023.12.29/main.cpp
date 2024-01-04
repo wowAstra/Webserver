@@ -6,10 +6,25 @@
 #include "httprequest.h"
 #include "httpresponse.h"
 #include "httpresponsefile.h"
+#include "logging.h"
+#include "asynclogging.h"
 
 using namespace my_muduo;
+
 using my_muduo::Method;
 using my_muduo::HttpStatusCode;
+
+std::unique_ptr<AsyncLogging> asynclog;
+extern void SetOutputFunc(Logger::OutputFunc);
+extern void SetFlushFunc(Logger::FlushFunc);
+
+void AsyncOutputFunc(const char* data, int len) {
+    asynclog->Append(data, len);
+}
+
+void AsyncFlushFunc() {
+    asynclog->Flush();
+}
 
 void HttpResponseCallback(const HttpRequest& request, HttpResponse& response) {
     if (request.method() == kGet) {
@@ -56,9 +71,15 @@ int main(int argc, char* argv[]) {
         printf("usage: ip port \n");
         return 0;
     }
+
+    asynclog.reset(new AsyncLogging());
+    SetOutputFunc(AsyncOutputFunc);
+    SetFlushFunc(AsyncFlushFunc);
+    asynclog->StartAsyncLogging();
+
     EventLoop loop;
     Address address(argv[1], argv[2]);
-    HttpServer server(&loop, address, true);
+    HttpServer server(&loop, address, false);
     server.SetHttpResponseCallback(HttpResponseCallback);
     server.Start();
     loop.Loop();

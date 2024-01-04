@@ -51,7 +51,7 @@ public:
         TcpConnectionPtr conn(connection.lock());
         if (conn) {
             if (Timestamp::AddTime(conn->timestamp(), kIdleConnectionTimeouts) < Timestamp::Now()) {
-                printf("%s HttpServer::HandleIdleConnection close connection\n", Timestamp::Now().ToFormattedString().data());
+                // printf("%s HttpServer::HandleIdleConnection close connection\n", Timestamp::Now().ToFormattedString().data());
                 conn->Shutdown();
             }
             else {
@@ -62,7 +62,7 @@ public:
 
     void ConnectionCallback(const TcpConnectionPtr& connection) {
         if (auto_close_idleconnection_) {
-            printf("%s HttpServer::ConnectionCallback\n", Timestamp::Now().ToFormattedString().data());
+            // printf("%s HttpServer::ConnectionCallback\n", Timestamp::Now().ToFormattedString().data());
             loop_->RunAfter(kIdleConnectionTimeouts, std::bind(&HttpServer::HandleIdleConnection, this, std::weak_ptr<TcpConnection>(connection)));
         }
     }

@@ -2,6 +2,7 @@
 #define MY_MUDUO_CONDITION_H_
 
 #include <pthread.h>
+
 #include "mutex.h"
 #include "noncopyable.h"
 
@@ -23,10 +24,12 @@ public:
         return ret == 0;
     }
 
-    bool Signal() {
+    bool WaitForFewSeconds(double seconds);
+
+    bool Notify() {
         return pthread_cond_signal(&cond_);
     }
-    bool BoardCast() {
+    bool NotifyAll() {
         return pthread_cond_broadcast(&cond_);
     }
 

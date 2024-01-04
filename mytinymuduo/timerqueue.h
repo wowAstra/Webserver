@@ -13,6 +13,7 @@
 #include "timer.h"
 #include "timestamp.h"
 #include "noncopyable.h"
+#include "logging.h"
 
 namespace my_muduo {
 
@@ -30,7 +31,7 @@ public:
         uint64_t read_byte;
         ssize_t readn = ::read(timerfd_, &read_byte, sizeof(read_byte));
         if (readn != sizeof(read_byte)) {
-            printf("TimerQueue::ReadTimerFd read SYS_ERR\n");
+            //LOG_ERROR << "TimerQueue::ReadTimerFd read SYS_ERR";
         }
     }
 

@@ -12,6 +12,7 @@
 
 #include "address.h"
 #include "channel.h"
+#include "logging.h"
 
 using namespace my_muduo;
 
@@ -34,9 +35,10 @@ Acceptor::~Acceptor() {
 
 void Acceptor::BindListenFd(const Address& addr) {
     struct sockaddr_in address;
-    memset(&address, 0, sizeof(address));
+    bzero((char*)&address, sizeof(address));
     address.sin_family = AF_INET;
-    address.sin_port = htons(addr.port());
+    address.sin_addr.s_addr = htonl(INADDR_ANY);
+    address.sin_port = htons(static_cast<uint16_t>(addr.port()));
     inet_pton(AF_INET, addr.ip(), &address.sin_addr);
     int ret = bind(listenfd_, (struct sockaddr*)(&address), sizeof(address));
     assert(ret != -1);
@@ -51,7 +53,7 @@ void Acceptor::Listen() {
 }
 
 void Acceptor::NewConnection() {
-    struct sockaddr_in client;
+    struct sockaddr_in client, peeraddr;
     socklen_t client_addrlength = sizeof(client);
     int connfd = ::accept4(listenfd_, (struct sockaddr*)&client, &client_addrlength, SOCK_NONBLOCK | SOCK_CLOEXEC);
     if (connfd < 0) {
@@ -65,14 +67,16 @@ void Acceptor::NewConnection() {
     }
     assert(connfd > 0);
     if (SetSockoptKeepAlive(connfd) == -1) {
-        printf("Acceptor::NewConnection SetSockoptKeepAlive failed\n");
+        //LOG_ERROR << "Acceptor::NewConnection SetSockoptKeepAlive failed";
         close(connfd);
         return;
     }
     if (SetSockoptTcpNoDelay(connfd) == -1) {
-        printf("Acceptor::NewConnection SetSockoptTcpNoDelay failed\n");
+        //LOG_ERROR << "Acceptor::NewConnection SetSockoptTcpNoDelay failed";
         close(connfd);
         return;
     }
-    new_connection_callback_(connfd);
+    socklen_t peer_addrlength = sizeof(peeraddr);
+    getpeername(connfd, (struct sockaddr *)&peeraddr, &peer_addrlength);
+    new_connection_callback_(connfd, Address(inet_ntoa(peeraddr.sin_addr), ntohs(peeraddr.sin_port)));
 }

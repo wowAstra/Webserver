@@ -27,7 +27,8 @@ IgnoreSigPipe initObj;
 }
 
 EventLoop::EventLoop()
-    : tid_(::pthread_self()), 
+    : running_(false),
+      tid_(::pthread_self()), 
       epoller_(new Epoller()), 
       wakeup_fd_(::eventfd(0, EFD_NONBLOCK | EFD_CLOEXEC)),
       wakeup_channel_(new Channel(this, wakeup_fd_)), 
@@ -38,6 +39,7 @@ EventLoop::EventLoop()
 }
 
 EventLoop::~EventLoop() {
+    if (running_) running_ = false;
     wakeup_channel_->DisableAll();
     Remove(wakeup_channel_.get());
     close(wakeup_fd_);
@@ -45,6 +47,7 @@ EventLoop::~EventLoop() {
 
 void EventLoop::Loop() {
     assert(IsInThreadLoop());
+    running_ = true;
     while (1) {
         active_channels_.clear();
         epoller_->Poll(active_channels_);
@@ -53,6 +56,7 @@ void EventLoop::Loop() {
         }
         DoToDoList();
     }
+    running_ = false;
 }
 
 void EventLoop::HandleRead() {

@@ -61,6 +61,8 @@
         "thread": "cpp",
         "typeinfo": "cpp",
         "map": "cpp",
-        "set": "cpp"
+        "set": "cpp",
+        "climits": "cpp",
+        "iostream": "cpp"
     }
 }
